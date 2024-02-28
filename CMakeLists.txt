@@ -22,13 +22,16 @@ endif ()
 add_compile_options(-fstrict-vtable-pointers)
 add_link_options(-fstrict-vtable-pointers)
 
-add_compile_options(-glldb)
+# add_compile_options(-glldb)
 # add_compile_options(-g0)
 
-add_compile_options(-O0 -fno-omit-frame-pointer)
+# add_compile_options(-O0 -fno-omit-frame-pointer)
 
-# add_compile_options(-Os -fvisibility=hidden -fvisibility-inlines-hidden -ffunction-sections -fdata-sections)
-# add_link_options(-Os -Wl,-dead_strip)
+add_compile_options(-Oz)
+add_link_options(-Oz)
+
+# add_compile_options(-Os)
+# add_link_options(-Os)
 
 # add_compile_options(-Og)
 # add_link_options(-Og)
@@ -45,7 +48,10 @@ add_compile_options(-O0 -fno-omit-frame-pointer)
 # add_compile_options(-Ofast)
 # add_link_options(-Ofast)
 
-add_compile_options(-fvisibility=hidden -fvisibility-inlines-hidden -ffunction-sections -fdata-sections)
+# add_compile_options(-fno-rtti -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables)
+# add_link_options(-fno-rtti -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables)
+
+add_compile_options(-fvisibility=hidden -fvisibility-inlines-hidden -fvisibility-inlines-hidden-static-local-var -ffunction-sections -fdata-sections)
 add_link_options(-Wl,-dead_strip)
 
 add_compile_options(-flto=full -fwhole-program-vtables -fvirtual-function-elimination)

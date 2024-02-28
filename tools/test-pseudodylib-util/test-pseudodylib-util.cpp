@@ -27,7 +27,7 @@ int main(int argc, const char *argv[]) {
 
     const auto n      = parser.get<uint8_t>("n");
     const auto fact_n = Factorial::fact(n);
-    if (fact_n == UINT64_MAX) {
+    if (TEST_PSEUDODYLIB_UNLIKELY(fact_n == UINT64_MAX)) {
         fmt::print("fact({:d}) can't be computed within 64 bits :'<\n", static_cast<uint8_t>(n));
         return -2;
     }

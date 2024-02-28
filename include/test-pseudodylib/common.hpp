@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cinttypes>
 #include <cstdint>
 #include <filesystem>
 #include <string>

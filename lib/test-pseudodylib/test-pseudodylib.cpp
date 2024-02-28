@@ -10,14 +10,17 @@
 namespace TestPeudodylib {
 
 uint64_t Factorial::fact(uint8_t n) {
-    if (n > 20) {
-        fmt::print(stderr, "Sorry, uint64_t cant hold {:d}!, returning UINT64_MAX\n",
-                   static_cast<uint8_t>(n));
+    uint32_t nfast = n;
+    if (TEST_PSEUDODYLIB_UNLIKELY(nfast > 20)) {
+        // fmt::print(stderr, FMT_COMPILE("Sorry, uint64_t cant hold {:d}!, returning
+        // UINT64_MAX\n"),
+        //            nfast);
+        fprintf(stderr, "Sorry, uint64_t can't hold %" PRIu32 "!, returning UINT64_MAX\n", nfast);
         return UINT64_MAX;
     }
     uint64_t res = 1;
-    while (n > 1)
-        res *= n--;
+    while (nfast > 1)
+        res *= nfast--;
     return res;
 }
 
