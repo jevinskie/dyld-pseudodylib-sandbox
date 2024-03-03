@@ -8,6 +8,7 @@ add_subdirectory(fmt)
 add_library(icecream INTERFACE)
 target_include_directories(icecream INTERFACE icecream-scoped-include)
 
+option(LIEF_USE_CCACHE "" OFF)
 option(LIEF_PYTHON_API "" OFF)
 option(LIEF_C_API "" OFF)
 option(LIEF_EXAMPLES "" OFF)

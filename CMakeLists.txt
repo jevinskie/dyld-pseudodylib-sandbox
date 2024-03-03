@@ -54,8 +54,8 @@ add_compile_options(-O0 -fno-omit-frame-pointer)
 add_compile_options(-fvisibility=hidden -fvisibility-inlines-hidden -fvisibility-inlines-hidden-static-local-var -ffunction-sections -fdata-sections)
 add_link_options(-Wl,-dead_strip)
 
-# add_compile_options(-flto=full -fwhole-program-vtables -fvirtual-function-elimination)
-# add_link_options(-flto=full -fwhole-program-vtables -fvirtual-function-elimination)
+add_compile_options(-flto=full -fwhole-program-vtables -fvirtual-function-elimination)
+add_link_options(-flto=full -fwhole-program-vtables -fvirtual-function-elimination)
 
 # lol just don't its so bad
 # add_compile_options(-fno-inline)
