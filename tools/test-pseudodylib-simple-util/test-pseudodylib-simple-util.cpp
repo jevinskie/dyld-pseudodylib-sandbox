@@ -1,4 +1,6 @@
+#include "fmt/base.h"
 #include "test-pseudodylib-simple/test-pseudodylib-simple.h"
+#include <cstddef>
 #include <mach/vm_types.h>
 
 #undef NDEBUG
@@ -107,6 +109,7 @@ extern void _dyld_pseudodylib_deregister(_dyld_pseudodylib_handle pd_handle);
 
 template <> struct fmt::formatter<Binary> : fmt::ostream_formatter {};
 template <> struct fmt::formatter<FatBinary> : fmt::ostream_formatter {};
+template <> struct fmt::formatter<ChainedBindingInfo> : fmt::ostream_formatter {};
 
 void my_dyld_pseudodylib_dispose_error_message(char *err_msg) {
     fmt::print("dispose_error_message: msg: '{:s}'\n", err_msg);
@@ -248,14 +251,64 @@ int main(void) {
     fmt::print("kret: {:d} errstr: {:s}\n", kret, mach_error_string(kret));
     fmt::print("after new_addr: {:#x} cur_prot: {:#x} max_prot: {:#x}\n", new_addr, cur_prot, max_prot);
 
-    errno                   = 0;
-    const auto mprotect_res = mprotect(reinterpret_cast<void *>(pd_base), pd_size, PROT_READ | MAP_JIT);
-    if (mprotect_res || errno) {
-        fmt::print("mprotect failed: {:d} '{:s}'\n", mprotect_res, strerror(errno));
-        return 2;
+    // errno                   = 0;
+    // const auto mprotect_res = mprotect(reinterpret_cast<void *>(pd_base), pd_size, PROT_READ | MAP_JIT);
+    // if (mprotect_res || errno) {
+    //     fmt::print("mprotect failed: {:d} '{:s}'\n", mprotect_res, strerror(errno));
+    //     return 2;
+    // }
+
+    for (const ChainedBindingInfo &bind : bin->dyld_chained_fixups()->bindings()) {
+        fmt::print("handling: {}\n", bind);
+        std::string segment_name;
+        std::string libname;
+        std::string symbol;
+        bool is_ok = true;
+        if (const auto *segment = bind.segment()) {
+            segment_name = segment->name();
+        }
+
+        if (const auto *lib = bind.library()) {
+            libname = lib->name();
+        } else {
+            is_ok = false;
+        }
+
+        if (const auto *sym = bind.symbol()) {
+            symbol = sym->name();
+        } else {
+            is_ok = false;
+        }
+
+        if (!is_ok) {
+            fmt::print("not ok for: {}\n", bind);
+            continue;
+        }
+
+        void *lib_handle = dlopen(libname.c_str(), RTLD_LOCAL);
+        if (!lib_handle) {
+            fmt::print("dlopen('{:s}', RTLD_LOCAL) failed\n", libname);
+            continue;
+        }
+        void *sym_ptr = dlsym(lib_handle, symbol.substr(1).c_str());
+        if (sym_ptr) {
+            fmt::print("{:s} sym_ptr: {} in lib {:s}\n", symbol, fmt::ptr(sym_ptr), libname);
+            fmt::print("bind addr: {:#x} off: {:#x}\n", bind.address(), bind.offset());
+            uintptr_t *sym_ptr_addr = reinterpret_cast<uintptr_t *>(bind.address() + new_addr);
+            fmt::print("sym_ptr_addr: {}\n", fmt::ptr(sym_ptr_addr));
+            fmt::print("sym_ptr_addr before: {:#018x}\n", *sym_ptr_addr);
+            *sym_ptr_addr = reinterpret_cast<uintptr_t>(sym_ptr);
+            fmt::print("sym_ptr_addr after: {:#018x}\n", *sym_ptr_addr);
+        }
+
+        dlclose(lib_handle);
     }
 
+    // *reinterpret_cast<uint64_t *>(new_addr) = *reinterpret_cast<uint64_t *>(new_addr) + 1;
+
     pthread_jit_write_protect_np(true);
+
+    // *reinterpret_cast<uint64_t *>(new_addr) = *reinterpret_cast<uint64_t *>(new_addr) + 1;
 
     const auto magic_orig = *reinterpret_cast<uint64_t *>(pd_base);
     fmt::print("post remap: magic_orig: {:#018x}\n", magic_orig);
