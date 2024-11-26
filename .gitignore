@@ -1,4 +1,5 @@
 # VSCode
 **/.vscode/
 **/.vscode-ctags
+/.cache/
 /build/

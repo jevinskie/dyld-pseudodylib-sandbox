@@ -49,12 +49,12 @@ static bool dylib_to_obj(const fs::path &in_dylib_path, const fs::path &out_obj_
     std::vector<std::unique_ptr<Binary>> out_thin_objs;
     for (const auto &in_dylib : *in_fat_dylib) {
         const auto in_hdr = in_dylib.header();
-        const auto in_ft = in_hdr.file_type();
+        const auto in_ft  = in_hdr.file_type();
         if (in_ft != FILE_TYPES::MH_DYLIB) {
             fmt::print(stderr, "filetype '{}' isn't MH_DYLIB in slice:\n{}\n", in_ft, in_dylib);
             return false;
         }
-        auto obj = Binary{};
+        auto obj     = Binary{};
         auto obj_hdr = Header{};
         obj_hdr.magic(in_hdr.magic());
         obj_hdr.cpu_type(in_hdr.cpu_type());
