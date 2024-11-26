@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(dyld-pseudodylib-sandbox CXX)
+project(dyld-pseudodylib-sandbox ASM C CXX)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
@@ -54,8 +54,8 @@ add_compile_options(-O0 -fno-omit-frame-pointer)
 add_compile_options(-fvisibility=hidden -fvisibility-inlines-hidden -fvisibility-inlines-hidden-static-local-var -ffunction-sections -fdata-sections)
 add_link_options(-Wl,-dead_strip)
 
-add_compile_options(-flto=full -fwhole-program-vtables -fvirtual-function-elimination)
-add_link_options(-flto=full -fwhole-program-vtables -fvirtual-function-elimination)
+# add_compile_options(-flto=full -fwhole-program-vtables -fvirtual-function-elimination)
+# add_link_options(-flto=full -fwhole-program-vtables -fvirtual-function-elimination)
 
 # lol just don't its so bad
 # add_compile_options(-fno-inline)
@@ -67,6 +67,8 @@ endif()
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_EXTENSIONS YES)
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_EXTENSIONS YES)
 
 add_subdirectory(3rdparty)
 add_subdirectory(lib)

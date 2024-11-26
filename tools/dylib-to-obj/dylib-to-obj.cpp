@@ -54,7 +54,7 @@ static bool dylib_to_obj(const fs::path &in_dylib_path, const fs::path &out_obj_
             fmt::print(stderr, "filetype '{}' isn't MH_DYLIB in slice:\n{}\n", in_ft, in_dylib);
             return false;
         }
-        auto obj     = Binary{};
+        // auto obj = Binary{};
         auto obj_hdr = Header{};
         obj_hdr.magic(in_hdr.magic());
         obj_hdr.cpu_type(in_hdr.cpu_type());
@@ -67,7 +67,7 @@ static bool dylib_to_obj(const fs::path &in_dylib_path, const fs::path &out_obj_
         if (verbose) {
             fmt::print("new object header:\n{}\n", obj_hdr);
         }
-        obj.header() = obj_hdr;
+        // obj.header() = obj_hdr;
         std::vector<SegmentCommand> obj_segs;
         std::vector<Section> obj_sects;
         for (const auto &in_seg : in_dylib.segments()) {
