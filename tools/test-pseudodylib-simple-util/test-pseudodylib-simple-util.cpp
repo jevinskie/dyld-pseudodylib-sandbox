@@ -1,24 +1,21 @@
 #include "test-pseudodylib-simple/test-pseudodylib-simple.h"
-#include <cstring>
-#include <mach/arm/vm_types.h>
-#include <mach/mach_error.h>
-#include <mach/vm_prot.h>
 #include <mach/vm_types.h>
-#include <sys/_types/_uintptr_t.h>
 
 #undef NDEBUG
 #include <cassert>
+
+#include <LIEF/MachO.hpp>
+
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <dlfcn.h>
 #include <mach/mach.h>
 #include <mach/vm_prot.h>
 #include <pthread.h>
 #include <sys/mman.h>
-
 #include <vector>
 
-#include <LIEF/MachO.hpp>
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 
@@ -26,27 +23,26 @@ using namespace LIEF::MachO;
 
 extern "C" {
 extern void *test_pseudodylib_simple_begin;
+extern void *test_pseudodylib_simple_begin_inner;
+extern void *test_pseudodylib_simple_end_inner;
 extern void *test_pseudodylib_simple_end;
 
 // Symbol flags type for symbols defined via the pseudo-dylibs APIs.
 typedef uint64_t _dyld_pseudodylib_symbol_flags;
 
 // Flag values for _dyld_pseudodylib_symbol_flags.
-#define DYLD_PSEUDODYLIB_SYMBOL_FLAGS_NONE 0
-#define DYLD_PSEUDODYLIB_SYMBOL_FLAGS_FOUND 1
+#define DYLD_PSEUDODYLIB_SYMBOL_FLAGS_NONE     0
+#define DYLD_PSEUDODYLIB_SYMBOL_FLAGS_FOUND    1
 #define DYLD_PSEUDODYLIB_SYMBOL_FLAGS_WEAK_DEF 2
 #define DYLD_PSEUDODYLIB_SYMBOL_FLAGS_CALLABLE 4
 
 typedef void (*_dyld_pseudodylib_dispose_error_message)(char *err_msg);
 typedef char *(*_dyld_pseudodylib_initialize)(void *pd_ctx, const void *mh);
 typedef char *(*_dyld_pseudodylib_deinitialize)(void *pd_ctx, const void *mh);
-typedef char *(*_dyld_pseudodylib_lookup_symbols)(void *pd_ctx, const void *mh, const char *names[],
-                                                  size_t num_names, void *addrs[],
-                                                  _dyld_pseudodylib_symbol_flags flags[]);
-typedef int (*_dyld_pseudodylib_lookup_address)(void *pd_ctx, const void *mh, const void *addr,
-                                                struct dl_info *dl);
-typedef char *(*_dyld_pseudodylib_find_unwind_sections)(void *pd_ctx, const void *mh,
-                                                        const void *addr, bool *found,
+typedef char *(*_dyld_pseudodylib_lookup_symbols)(void *pd_ctx, const void *mh, const char *names[], size_t num_names,
+                                                  void *addrs[], _dyld_pseudodylib_symbol_flags *flags);
+typedef int (*_dyld_pseudodylib_lookup_address)(void *pd_ctx, const void *mh, const void *addr, struct dl_info *dl);
+typedef char *(*_dyld_pseudodylib_find_unwind_sections)(void *pd_ctx, const void *mh, const void *addr, bool *found,
                                                         struct dyld_unwind_sections *info);
 
 // Versioned struct to hold pseudo-dylib callbacks.
@@ -103,11 +99,9 @@ typedef struct _dyld_pseudodylib_opaque *_dyld_pseudodylib_handle;
 // Exists in iOS 17.0 and later
 extern _dyld_pseudodylib_callbacks_handle
 _dyld_pseudodylib_register_callbacks(const struct _dyld_pseudodylib_callbacks *callbacks);
-extern void
-_dyld_pseudodylib_deregister_callbacks(_dyld_pseudodylib_callbacks_handle callbacks_handle);
+extern void _dyld_pseudodylib_deregister_callbacks(_dyld_pseudodylib_callbacks_handle callbacks_handle);
 extern _dyld_pseudodylib_handle
-_dyld_pseudodylib_register(void *addr, size_t size,
-                           _dyld_pseudodylib_callbacks_handle callbacks_handle, void *context);
+_dyld_pseudodylib_register(void *addr, size_t size, _dyld_pseudodylib_callbacks_handle callbacks_handle, void *context);
 extern void _dyld_pseudodylib_deregister(_dyld_pseudodylib_handle pd_handle);
 }
 
@@ -115,26 +109,89 @@ template <> struct fmt::formatter<Binary> : fmt::ostream_formatter {};
 template <> struct fmt::formatter<FatBinary> : fmt::ostream_formatter {};
 
 void my_dyld_pseudodylib_dispose_error_message(char *err_msg) {
-    assert(!__PRETTY_FUNCTION__);
+    fmt::print("dispose_error_message: msg: '{:s}'\n", err_msg);
 }
+
 char *my_dyld_pseudodylib_initialize(void *pd_ctx, const void *mh) {
-    assert(!__PRETTY_FUNCTION__);
+    fmt::print("my_dyld_pseudodylib_initialize(pd_ctx = {}, mh = {}) called\n", fmt::ptr(pd_ctx), fmt::ptr(mh));
+    return nullptr;
 }
+
 char *my_dyld_pseudodylib_deinitialize(void *pd_ctx, const void *mh) {
-    assert(!__PRETTY_FUNCTION__);
+    fmt::print("my_dyld_pseudodylib_deinitialize(pd_ctx = {}, mh = {}) called\n", fmt::ptr(pd_ctx), fmt::ptr(mh));
+    return nullptr;
 }
-char *my_dyld_pseudodylib_lookup_symbols(void *pd_ctx, const void *mh, const char *names[],
-                                         size_t num_names, void *addrs[],
-                                         _dyld_pseudodylib_symbol_flags flags[]) {
-    assert(!__PRETTY_FUNCTION__);
+
+std::string get_names_str(const char *names[], size_t num_names) {
+    std::string res = "names{ ";
+    for (size_t i = 0; i < num_names; ++i) {
+        if (names[i]) {
+            res += fmt::format("'{:s}', ", names[i]);
+        } else {
+            res += "nullptr, ";
+        }
+    }
+    res += " }";
+    return res;
 }
-int my_dyld_pseudodylib_lookup_address(void *pd_ctx, const void *mh, const void *addr,
-                                       struct dl_info *dl) {
-    assert(!__PRETTY_FUNCTION__);
+
+std::string get_addrs_str(void *addrs[], size_t num_names) {
+    std::string res = "addrs{ ";
+    for (size_t i = 0; i < num_names; ++i) {
+        res += fmt::format("{}, ", fmt::ptr(addrs[i]));
+    }
+    res += " }";
+    return res;
 }
-char *my_dyld_pseudodylib_find_unwind_sections(void *pd_ctx, const void *mh, const void *addr,
-                                               bool *found, struct dyld_unwind_sections *info) {
-    assert(!__PRETTY_FUNCTION__);
+
+std::string get_flags_str(_dyld_pseudodylib_symbol_flags *flags) {
+    std::string res = "flags{ ";
+    if (flags) {
+        if (*flags & DYLD_PSEUDODYLIB_SYMBOL_FLAGS_FOUND) {
+            res += "DYLD_PSEUDODYLIB_SYMBOL_FLAGS_FOUND, ";
+        }
+        if (*flags & DYLD_PSEUDODYLIB_SYMBOL_FLAGS_WEAK_DEF) {
+            res += "DYLD_PSEUDODYLIB_SYMBOL_FLAGS_WEAK_DEF, ";
+        }
+        if (*flags & DYLD_PSEUDODYLIB_SYMBOL_FLAGS_CALLABLE) {
+            res += "DYLD_PSEUDODYLIB_SYMBOL_FLAGS_CALLABLE, ";
+        }
+        if (*flags == DYLD_PSEUDODYLIB_SYMBOL_FLAGS_NONE) {
+            res += "DYLD_PSEUDODYLIB_SYMBOL_FLAGS_NONE";
+        }
+    } else {
+        res += "nullptr";
+    }
+    res += " }";
+    return res;
+}
+
+char *my_dyld_pseudodylib_lookup_symbols(void *pd_ctx, const void *mh, const char *names[], size_t num_names,
+                                         void *addrs[], _dyld_pseudodylib_symbol_flags flags[]) {
+    fmt::print("my_dyld_pseudodylib_lookup_symbols(pd_ctx = {}, mh = {}, names = {}, num_names = {}, addrs = {}, flags "
+               "= {}) called with names: {:s} addrs: {:s} flags: {:s}\n",
+               fmt::ptr(pd_ctx), fmt::ptr(mh), fmt::ptr(names), num_names, fmt::ptr(addrs), fmt::ptr(flags),
+               get_names_str(names, num_names), get_addrs_str(addrs, num_names), get_flags_str(flags));
+
+    fmt::print("my_dyld_pseudodylib_lookup_symbols(pd_ctx = {}, mh = {}, names = {}, num_names = {}, addrs = {}, flags "
+               "= {}) returns with names: {:s} addrs: {:s} flags: {:s}\n",
+               fmt::ptr(pd_ctx), fmt::ptr(mh), fmt::ptr(names), num_names, fmt::ptr(addrs), fmt::ptr(flags),
+               get_names_str(names, num_names), get_addrs_str(addrs, num_names), get_flags_str(flags));
+    return strdup("my_dyld_pseudodylib_lookup_symbols not implemented");
+}
+
+int my_dyld_pseudodylib_lookup_address(void *pd_ctx, const void *mh, const void *addr, struct dl_info *dl) {
+    fmt::print("my_dyld_pseudodylib_deinitialize(pd_ctx = {}, mh = {}) called\n", fmt::ptr(pd_ctx), fmt::ptr(mh));
+    return 0;
+}
+
+char *my_dyld_pseudodylib_find_unwind_sections(void *pd_ctx, const void *mh, const void *addr, bool *found,
+                                               struct dyld_unwind_sections *info) {
+    fmt::print("my_dyld_pseudodylib_find_unwind_sections(pd_ctx = {}, mh = {}, addr = {}, found = {} *found = {}, info "
+               "= {}) called\n",
+               fmt::ptr(pd_ctx), fmt::ptr(mh), fmt::ptr(addr), fmt::ptr(found),
+               found ? (*found ? "true" : "false") : "n/a", fmt::ptr(info));
+    return strdup("my_dyld_pseudodylib_find_unwind_sections not implemented");
 }
 
 struct pseudo_ctx {
@@ -142,37 +199,70 @@ struct pseudo_ctx {
 };
 
 int main(void) {
+    const uint64_t pd_base = (uintptr_t)&test_pseudodylib_simple_begin;
+    const size_t pd_size   = (uintptr_t)&test_pseudodylib_simple_end - (uintptr_t)&test_pseudodylib_simple_begin;
     fmt::print("test_pseudodylib_simple_begin: {}\n", fmt::ptr(&test_pseudodylib_simple_begin));
+    fmt::print("test_pseudodylib_simple_begin_inner: {}\n", fmt::ptr(&test_pseudodylib_simple_begin_inner));
+    fmt::print("test_pseudodylib_simple_end_inner: {}\n", fmt::ptr(&test_pseudodylib_simple_end_inner));
     fmt::print("test_pseudodylib_simple_end: {}\n", fmt::ptr(&test_pseudodylib_simple_end));
-    const size_t pd_size =
-        (uintptr_t)&test_pseudodylib_simple_end - (uintptr_t)&test_pseudodylib_simple_begin;
-    pthread_jit_write_protect_np(false);
-    const auto mprotect_res = mprotect(reinterpret_cast<void *>(&test_pseudodylib_simple_begin),
-                                       pd_size, PROT_READ | MAP_JIT);
-    if (mprotect_res) {
-        const auto dle = dlerror();
-        fmt::print("mprotect failed: {:d} '{:s}' '{:s}'\n", mprotect_res, strerror(errno),
-                   dle ? dle : "");
-        return 2;
-    }
-    vm_address_t new_addr{};
-    vm_prot_t cur_prot{};
-    vm_prot_t max_prot{VM_PROT_EXECUTE | VM_PROT_READ};
-    const auto kret = vm_remap(
-        mach_task_self(), &new_addr, vm_size_t{pd_size}, 0, MAP_JIT, mach_task_self(),
-        reinterpret_cast<vm_address_t>(&test_pseudodylib_simple_begin), 0, &cur_prot, &max_prot, 0);
-    fmt::print("kret: {:d} errstr: {:s}\n", kret, mach_error_string(kret));
-    fmt::print("new_addr: {:#x} cur_prot: {:#x} max_prot: {:#x}\n", new_addr, cur_prot, max_prot);
-    pthread_jit_write_protect_np(true);
-    std::vector<uint8_t> macho_buf(
-        reinterpret_cast<const uint8_t *>(&test_pseudodylib_simple_begin),
-        reinterpret_cast<const uint8_t *>(&test_pseudodylib_simple_end));
-    const auto bin = Parser::parse(macho_buf);
-    if (!bin) {
-        fmt::print("couldn't open pseudodylib macho\n");
+    fmt::print("pd_size: {:#x}\n", pd_size);
+
+    std::vector<uint8_t> macho_buf(reinterpret_cast<const uint8_t *>(&test_pseudodylib_simple_begin),
+                                   reinterpret_cast<const uint8_t *>(&test_pseudodylib_simple_end));
+    const auto fatbin = Parser::parse(macho_buf);
+    if (!fatbin) {
+        fmt::print("couldn't open pseudodylib macho as fat\n");
         return 1;
     }
-    fmt::print("bin:\n{}\n", *bin);
+    // fmt::print("\n\n\nfatbin:\n{}\n", *fatbin);
+    // fmt::print("\n\n\n\n");
+    const auto bin = fatbin->at(0);
+    if (!bin) {
+        fmt::print("couldn't open pseudodylib macho as slim fat subset\n");
+        return 1;
+    }
+    fmt::print("\n\n\nbin:\n{}\n\n\n\n", *bin);
+
+#if 1
+    fmt::print("pd_base: {:#x}\n", pd_base);
+    const auto magic_orig_pre = *reinterpret_cast<uint64_t *>(pd_base);
+    fmt::print("pre remap:  magic_orig: {:#018x}\n", magic_orig_pre);
+
+    pthread_jit_write_protect_np(false);
+
+    const vm_address_t src_addr{static_cast<vm_address_t>(pd_base)};
+    // vm_address_t new_addr{src_addr};
+    vm_address_t new_addr{0x300000000ULL};
+    // vm_prot_t cur_prot{VM_PROT_READ | VM_PROT_WRITE};
+    // vm_prot_t max_prot{VM_PROT_READ | VM_PROT_WRITE};
+    // vm_prot_t cur_prot{VM_PROT_NONE};
+    // vm_prot_t max_prot{VM_PROT_NONE};
+    vm_prot_t cur_prot{VM_PROT_NO_CHANGE};
+    vm_prot_t max_prot{VM_PROT_NO_CHANGE};
+    const vm_address_t mask{0};
+    const auto self          = mach_task_self();
+    const boolean_t anywhere = false;
+    fmt::print("before new_addr: {:#x} cur_prot: {:#x} max_prot: {:#x}\n", new_addr, cur_prot, max_prot);
+    const auto kret = vm_remap(self, &new_addr, vm_size_t{pd_size}, mask, anywhere, self, src_addr, 0, &cur_prot,
+                               &max_prot, VM_INHERIT_DEFAULT);
+    fmt::print("kret: {:d} errstr: {:s}\n", kret, mach_error_string(kret));
+    fmt::print("after new_addr: {:#x} cur_prot: {:#x} max_prot: {:#x}\n", new_addr, cur_prot, max_prot);
+
+    errno                   = 0;
+    const auto mprotect_res = mprotect(reinterpret_cast<void *>(pd_base), pd_size, PROT_READ | MAP_JIT);
+    if (mprotect_res || errno) {
+        fmt::print("mprotect failed: {:d} '{:s}'\n", mprotect_res, strerror(errno));
+        return 2;
+    }
+
+    pthread_jit_write_protect_np(true);
+
+    const auto magic_orig = *reinterpret_cast<uint64_t *>(pd_base);
+    fmt::print("post remap: magic_orig: {:#018x}\n", magic_orig);
+    const auto magic_remap = *reinterpret_cast<uint64_t *>(new_addr);
+    fmt::print("post remap: magic_remap: {:#018x}\n", magic_remap);
+#endif
+
     _dyld_pseudodylib_callbacks_v1 cb{1,
                                       my_dyld_pseudodylib_dispose_error_message,
                                       my_dyld_pseudodylib_initialize,
@@ -186,13 +276,28 @@ int main(void) {
     fmt::print("pd_cb_handle: {}\n", fmt::ptr(pd_cb_handle));
     pseudo_ctx ctx{.dummy = 243};
     fmt::print("&ctx: {}\n", fmt::ptr(&ctx));
-    _dyld_pseudodylib_handle pd_handle = _dyld_pseudodylib_register(
-        &test_pseudodylib_simple_begin,
-        (uintptr_t)&test_pseudodylib_simple_end - (uintptr_t)&test_pseudodylib_simple_begin,
-        pd_cb_handle, reinterpret_cast<void *>(&ctx));
+    _dyld_pseudodylib_handle pd_handle = _dyld_pseudodylib_register(reinterpret_cast<void *>(new_addr), pd_size,
+                                                                    pd_cb_handle, reinterpret_cast<void *>(&ctx));
     fmt::print("pd_handle: {}\n", fmt::ptr(pd_handle));
+
     void *handle = dlopen("libtest-pseudodylib-simple.dylib", RTLD_GLOBAL);
     fmt::print("handle: {}\n", fmt::ptr(handle));
+
+    const auto dbl_fptr = reinterpret_cast<dbl_fptr_t>(dlsym(handle, "dbl"));
+    fmt::print("dbl_fptr: {}\n", fmt::ptr(dbl_fptr));
+    const int dbl_arg  = 42;
+    const auto dbl_res = dbl_fptr(dbl_arg);
+    fmt::print("dbl({:d}) => {:d}\n", dbl_arg, dbl_res);
+
+#ifdef PD_EXTERN_SYMS
+    const auto fact_fptr = reinterpret_cast<fact_fptr_t>(dlsym(handle, "fact"));
+    fmt::print("fact_fptr: {}\n", fmt::ptr(fact_fptr));
+    const int fact_arg  = 5;
+    const auto fact_res = fact_fptr(fact_arg);
+    fmt::print("fact({:d}) => {:d}\n", fact_arg, fact_res);
+#endif
+
     _dyld_pseudodylib_deregister(pd_handle);
+
     return 0;
 }

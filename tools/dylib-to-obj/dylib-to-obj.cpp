@@ -32,12 +32,10 @@ template <ToCharStarFreeFunc T> struct fmt::formatter<T> : formatter<string_view
     }
 };
 
-static bool dylib_to_obj(const fs::path &in_dylib_path, const fs::path &out_obj_path,
-                         const bool verbose = false) {
+static bool dylib_to_obj(const fs::path &in_dylib_path, const fs::path &out_obj_path, const bool verbose = false) {
     if (verbose) {
         fmt::print("verbose mode enabled\n");
-        fmt::print("verbose mode enabled\nin_dylib_path: {}\nout_obj_path: {}\b", in_dylib_path,
-                   out_obj_path);
+        fmt::print("verbose mode enabled\nin_dylib_path: {}\nout_obj_path: {}\b", in_dylib_path, out_obj_path);
         LIEF::logging::set_level(LIEF::logging::LOGGING_LEVEL::LOG_TRACE);
     }
 
@@ -107,10 +105,7 @@ int main(int argc, const char *argv[]) {
     argparse::ArgumentParser parser(getprogname());
     parser.add_argument("-i", "--in-dylib").required().help("input dylib file path");
     parser.add_argument("-o", "--out-obj").required().help("output object file path");
-    parser.add_argument("-V", "--verbose")
-        .default_value(false)
-        .implicit_value(true)
-        .help("verbose mode");
+    parser.add_argument("-V", "--verbose").default_value(false).implicit_value(true).help("verbose mode");
 
     try {
         parser.parse_args(argc, argv);
