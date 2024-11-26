@@ -358,11 +358,19 @@ int main(void) {
     fflush(stdout);
 
     fflush(stdout);
-    fmt::print("calling _dyld_pseudodylib_deregister...\n");
+    fmt::print("calling _dyld_pseudodylib_deregister(pd_handle)...\n");
     fflush(stdout);
     _dyld_pseudodylib_deregister(pd_handle);
     fflush(stdout);
-    fmt::print("calling _dyld_pseudodylib_deregister... done\n");
+    fmt::print("calling _dyld_pseudodylib_deregister(pd_handle)... done\n");
+    fflush(stdout);
+
+    fflush(stdout);
+    fmt::print("calling _dyld_pseudodylib_deregister_callbacks(pd_cb_handle)...\n");
+    fflush(stdout);
+    _dyld_pseudodylib_deregister_callbacks(pd_cb_handle);
+    fflush(stdout);
+    fmt::print("calling _dyld_pseudodylib_deregister_callbacks(pd_cb_handle)... done\n");
     fflush(stdout);
 
     fflush(stdout);
