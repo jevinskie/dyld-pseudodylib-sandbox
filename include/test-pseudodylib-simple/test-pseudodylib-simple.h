@@ -1,7 +1,7 @@
 #ifndef TEST_PSEUDODYLIB_SIMPLE_H
 #define TEST_PSEUDODYLIB_SIMPLE_H
 
-// #define PD_CTOR_DTOR
+#define PD_CTOR_DTOR
 #define PD_EXTERN_SYMS
 
 #ifdef __cplusplus

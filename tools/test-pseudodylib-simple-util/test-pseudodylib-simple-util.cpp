@@ -251,13 +251,6 @@ int main(void) {
     fmt::print("kret: {:d} errstr: {:s}\n", kret, mach_error_string(kret));
     fmt::print("after new_addr: {:#x} cur_prot: {:#x} max_prot: {:#x}\n", new_addr, cur_prot, max_prot);
 
-    // errno                   = 0;
-    // const auto mprotect_res = mprotect(reinterpret_cast<void *>(pd_base), pd_size, PROT_READ | MAP_JIT);
-    // if (mprotect_res || errno) {
-    //     fmt::print("mprotect failed: {:d} '{:s}'\n", mprotect_res, strerror(errno));
-    //     return 2;
-    // }
-
     for (const ChainedBindingInfo &bind : bin->dyld_chained_fixups()->bindings()) {
         fmt::print("handling: {}\n", bind);
         std::string segment_name;
@@ -333,7 +326,13 @@ int main(void) {
                                                                     pd_cb_handle, reinterpret_cast<void *>(&ctx));
     fmt::print("pd_handle: {}\n", fmt::ptr(pd_handle));
 
+    fflush(stdout);
+    fmt::print("calling dlopen()...\n");
+    fflush(stdout);
     void *handle = dlopen("libtest-pseudodylib-simple.dylib", RTLD_GLOBAL);
+    fflush(stdout);
+    fmt::print("calling dlopen()... done\n");
+    fflush(stdout);
     fmt::print("handle: {}\n", fmt::ptr(handle));
 
     const auto dbl_fptr = reinterpret_cast<dbl_fptr_t>(dlsym(handle, "dbl"));
@@ -350,7 +349,25 @@ int main(void) {
     fmt::print("fact({:d}) => {:d}\n", fact_arg, fact_res);
 #endif
 
+    fflush(stdout);
+    fmt::print("calling _dyld_pseudodylib_deregister...\n");
+    fflush(stdout);
     _dyld_pseudodylib_deregister(pd_handle);
+    fflush(stdout);
+    fmt::print("calling _dyld_pseudodylib_deregister... done\n");
+    fflush(stdout);
+
+    fflush(stdout);
+    fmt::print("calling dlclose(handle)...\n");
+    fflush(stdout);
+    dlclose(handle);
+    fflush(stdout);
+    fmt::print("calling dlclose(handle)... done\n");
+    fflush(stdout);
+
+    fflush(stdout);
+    fmt::print("test done\n");
+    fflush(stdout);
 
     return 0;
 }
