@@ -350,19 +350,19 @@ int main(void) {
 #endif
 
     fflush(stdout);
-    fmt::print("calling _dyld_pseudodylib_deregister...\n");
-    fflush(stdout);
-    _dyld_pseudodylib_deregister(pd_handle);
-    fflush(stdout);
-    fmt::print("calling _dyld_pseudodylib_deregister... done\n");
-    fflush(stdout);
-
-    fflush(stdout);
     fmt::print("calling dlclose(handle)...\n");
     fflush(stdout);
     dlclose(handle);
     fflush(stdout);
     fmt::print("calling dlclose(handle)... done\n");
+    fflush(stdout);
+
+    fflush(stdout);
+    fmt::print("calling _dyld_pseudodylib_deregister...\n");
+    fflush(stdout);
+    _dyld_pseudodylib_deregister(pd_handle);
+    fflush(stdout);
+    fmt::print("calling _dyld_pseudodylib_deregister... done\n");
     fflush(stdout);
 
     fflush(stdout);
