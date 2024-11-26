@@ -1,5 +1,9 @@
 #include "test-pseudodylib-simple/test-pseudodylib-simple.h"
 #include <cstring>
+#include <mach/arm/vm_types.h>
+#include <mach/mach_error.h>
+#include <mach/vm_prot.h>
+#include <mach/vm_types.h>
 #include <sys/_types/_uintptr_t.h>
 
 #undef NDEBUG
@@ -7,6 +11,9 @@
 #include <cstdint>
 #include <cstdlib>
 #include <dlfcn.h>
+#include <mach/mach.h>
+#include <mach/vm_prot.h>
+#include <pthread.h>
 #include <sys/mman.h>
 
 #include <vector>
@@ -137,13 +144,26 @@ struct pseudo_ctx {
 int main(void) {
     fmt::print("test_pseudodylib_simple_begin: {}\n", fmt::ptr(&test_pseudodylib_simple_begin));
     fmt::print("test_pseudodylib_simple_end: {}\n", fmt::ptr(&test_pseudodylib_simple_end));
-    const size_t pd_size = (uintptr_t)&test_pseudodylib_simple_end - (uintptr_t)&test_pseudodylib_simple_begin;
-    const auto mprotect_res = mprotect(reinterpret_cast<void *>(&test_pseudodylib_simple_begin), pd_size, PROT_READ | MAP_JIT);
+    const size_t pd_size =
+        (uintptr_t)&test_pseudodylib_simple_end - (uintptr_t)&test_pseudodylib_simple_begin;
+    pthread_jit_write_protect_np(false);
+    const auto mprotect_res = mprotect(reinterpret_cast<void *>(&test_pseudodylib_simple_begin),
+                                       pd_size, PROT_READ | MAP_JIT);
     if (mprotect_res) {
         const auto dle = dlerror();
-        fmt::print("mprotect failed: {:d} '{:s}' '{:s}'\n", mprotect_res, strerror(errno), dle ? dle : "");
+        fmt::print("mprotect failed: {:d} '{:s}' '{:s}'\n", mprotect_res, strerror(errno),
+                   dle ? dle : "");
         return 2;
     }
+    vm_address_t new_addr{};
+    vm_prot_t cur_prot{};
+    vm_prot_t max_prot{VM_PROT_EXECUTE | VM_PROT_READ};
+    const auto kret = vm_remap(
+        mach_task_self(), &new_addr, vm_size_t{pd_size}, 0, MAP_JIT, mach_task_self(),
+        reinterpret_cast<vm_address_t>(&test_pseudodylib_simple_begin), 0, &cur_prot, &max_prot, 0);
+    fmt::print("kret: {:d} errstr: {:s}\n", kret, mach_error_string(kret));
+    fmt::print("new_addr: {:#x} cur_prot: {:#x} max_prot: {:#x}\n", new_addr, cur_prot, max_prot);
+    pthread_jit_write_protect_np(true);
     std::vector<uint8_t> macho_buf(
         reinterpret_cast<const uint8_t *>(&test_pseudodylib_simple_begin),
         reinterpret_cast<const uint8_t *>(&test_pseudodylib_simple_end));
