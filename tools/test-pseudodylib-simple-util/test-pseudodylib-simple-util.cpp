@@ -1,7 +1,4 @@
-#include "fmt/base.h"
 #include "test-pseudodylib-simple/test-pseudodylib-simple.h"
-#include <cstddef>
-#include <mach/vm_types.h>
 
 #undef NDEBUG
 #include <cassert>
@@ -13,7 +10,6 @@
 #include <cstring>
 #include <dlfcn.h>
 #include <mach/mach.h>
-#include <mach/vm_prot.h>
 #include <pthread.h>
 #include <sys/mman.h>
 #include <vector>
